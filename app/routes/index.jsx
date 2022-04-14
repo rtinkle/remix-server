@@ -1,3 +1,15 @@
+import {
+  Link,
+} from "@remix-run/react"
+
+export const meta = () => {
+  return {
+    title: 'Remix',
+    description:
+      'Home route',
+  }
+}
+
 export default function Index() {
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", lineHeight: "1.4" }}>
@@ -26,7 +38,10 @@ export default function Index() {
             Remix Docs
           </a>
         </li>
+        <li>
+          <Link to="./blog">Blog</Link>
+        </li>
       </ul>
     </div>
-  );
+  )
 }
