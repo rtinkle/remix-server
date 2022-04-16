@@ -27,7 +27,7 @@ export async function loader({ request, context }) {
   //console.log('env', env)
   console.log('context', context)
 
-  // Provide a custom `fetch` implementation as an option
+  // Provide a custom `fetch` implementation as required for Cloudfare Pages
   const supabase = createClient(context.SUPABASE_URL, context.SUPABASE_ANON_KEY, {
     fetch: (...args) => fetch(...args),
   })
@@ -59,8 +59,12 @@ export async function loader({ request, context }) {
       headers: reqHeaders,
     })
     console.log('Request Header Cache-Control', reqHeaders.get('Cache-Control'))
+    let result = {}
     const res = await fetch(req)
-    return json(await res.json())
+    result.jsonPosts = await res.json()
+    result.supabasePosts = data
+    //return json(await res.json())
+    return json(result)
 
   } catch (err) {
     console.error(err)
@@ -111,7 +115,9 @@ export function CatchBoundary() {
 
 export default function Index() {
   const genRenderError = false;
-  const posts = useLoaderData();
+  const posts = useLoaderData().jsonPosts
+  const supabasePosts = useLoaderData().supabasePosts
+
   const [pageErrors, setPageErrors] = React.useState([]);
   const triggerError = () =>
     setPageErrors((prev) => [...prev, 'Page badness occurred']);
@@ -126,6 +132,7 @@ export default function Index() {
       <h1>My Blog</h1>
       <h6>Transition State: {transition.state}</h6>
       <h6>Transition Type: {transition.state}</h6>
+      <h6>Supabase Data: {JSON.stringify(supabasePosts)}</h6>
       <br />
       <div><Link to="..">BACK</Link></div>
       <button type="button" onClick={triggerError}>
