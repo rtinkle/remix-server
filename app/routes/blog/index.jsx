@@ -1,10 +1,18 @@
-import * as React from 'react';
-import { Link, useLoaderData, useCatch } from '@remix-run/react'
+import * as React from 'react'
+import {
+  Link, 
+  useLoaderData,
+  useCatch,
+  useTransition
+} from '@remix-run/react'
 //import { json } from '@remix-run/cloudflare-pages'
 // for some reason, helper not found in cloudflare-pages service adapter, so created
 // project version in /utils/httpJsonHelper.js
 /// see https://remix.run/docs/en/v1.4.0-pre.0/other-api/adapter
-import { json } from '../../utils/httpJsonHelper'
+//import { json } from '../../utils/httpJsonHelper'
+import { json } from '~/utils/httpJsonHelper'
+
+import { createClient } from '@supabase/supabase-js'
 
 
 export const meta = () => {
@@ -14,19 +22,30 @@ export const meta = () => {
       'blog, blog, bloggity, blog',
   }
 }
-/*
-function json (obj) {
-   // Instead of this:
-   return new Response(JSON.stringify(obj), {
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-    },
+
+export async function loader({ request, context }) {
+  //console.log('env', env)
+  console.log('context', context)
+
+  // Provide a custom `fetch` implementation as an option
+  const supabase = createClient(context.SUPABASE_URL, context.SUPABASE_ANON_KEY, {
+    fetch: (...args) => fetch(...args),
   })
-}
-*/
-export async function loader({ request }) {
+
   try {
 
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*')
+    .limit(5)
+
+  if (error) {
+    console.log('Posts error', error)
+    return
+  }
+
+  console.log('Posts data', data)
+    
     //throw new Error('loader badness happened'); // handled by ErrorBoundary
     //throw new Response("Not Found", {status: 404}); /// handled by CatchBoundary
 
@@ -100,9 +119,13 @@ export default function Index() {
   if (genRenderError) {
     ///throw new Error('Rendering badness')
   }
+  const transition = useTransition()
+
   return (
     <>
       <h1>My Blog</h1>
+      <h6>Transition State: {transition.state}</h6>
+      <h6>Transition Type: {transition.state}</h6>
       <br />
       <div><Link to="..">BACK</Link></div>
       <button type="button" onClick={triggerError}>
