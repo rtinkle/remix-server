@@ -7,9 +7,7 @@ import {
 
 
 import { useNavigate } from 'react-router-dom'
-//import { json } from '../../utils/httpJsonHelper'
-import { json } from '~/utils/httpJsonHelper'
-
+import { json } from "@remix-run/cloudflare"
 
 export const meta = () => {
   return {

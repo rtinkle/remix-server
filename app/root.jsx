@@ -1,3 +1,4 @@
+import { UserContextProvider } from "~/useUser";
 import {
   Links,
   LiveReload,
@@ -5,10 +6,12 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-  //ErrorBoundary,
-  //CatchBoundary
+  useLoaderData,
   useCatch
 } from "@remix-run/react";
+
+import { getLoggedInUser } from "~/utils/sessions.server"
+import { json } from "@remix-run/cloudflare"
 
 export const meta = () => ({
   charset: "utf-8",
@@ -58,7 +61,23 @@ export function CatchBoundary() {
   )
 }
 
+export async function loader({ request, context }) {
+  console.log('root - context', context)
+
+  try {
+    const serverUser = await getLoggedInUser(request, context)
+    return json({serverUser, cloudfareContext: context})
+  } catch (err) {
+    console.error(err)
+    throw err
+  }
+}
+
 export default function App() {
+  // cloudfareContext contains cloudflare pages context which includes supabase related environment
+  // variables returned from root.tsx loader
+  const { serverUser, cloudfareContext } = useLoaderData()
+
   return (
     <html lang="en">
       <head>
@@ -66,7 +85,9 @@ export default function App() {
         <Links />
       </head>
       <body>
-        <Outlet />
+        <UserContextProvider cloudfareContext={cloudfareContext} serverUser={serverUser}>
+          <Outlet />
+        </UserContextProvider>
         <ScrollRestoration />
         <Scripts />
         <LiveReload />

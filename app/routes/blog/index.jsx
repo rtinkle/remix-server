@@ -9,11 +9,14 @@ import {
 // for some reason, helper not found in cloudflare-pages service adapter, so created
 // project version in /utils/httpJsonHelper.js
 /// see https://remix.run/docs/en/v1.4.0-pre.0/other-api/adapter
-//import { json } from '../../utils/httpJsonHelper'
-import { json } from '~/utils/httpJsonHelper'
+//import { json } from '~/utils/httpJsonHelper'
+// update: resolved missing import issue based on this github issue comment https://github.com/remix-run/remix/issues/2503#issuecomment-1080208290
 
-import { createClient } from '@supabase/supabase-js'
+import { json } from "@remix-run/cloudflare"
 
+// createSupabaseClient is wrapper for createClient from @supabase/supabase-js
+// that allows database related environment variables to be passed in via context object
+import { createSupabaseClient } from '~/utils/db'
 
 export const meta = () => {
   return {
@@ -24,27 +27,21 @@ export const meta = () => {
 }
 
 export async function loader({ request, context }) {
-  //console.log('env', env)
   console.log('context', context)
 
-  // Provide a custom `fetch` implementation as required for Cloudfare Pages
-  const supabase = createClient(context.SUPABASE_URL, context.SUPABASE_ANON_KEY, {
-    fetch: (...args) => fetch(...args),
-  })
-
   try {
+    const supabase = createSupabaseClient(context) 
+    const { data, error } = await supabase
+      .from('posts')
+      .select('*')
+      .limit(5)
 
-  const { data, error } = await supabase
-    .from('posts')
-    .select('*')
-    .limit(5)
+    if (error) {
+      console.log('Supabase Posts error', error)
+      throw new Response('Database Error: ' + error.message, { status: 500 })
+    }
 
-  if (error) {
-    console.log('Posts error', error)
-    return
-  }
-
-  console.log('Posts data', data)
+    console.log('Posts data', data)
     
     //throw new Error('loader badness happened'); // handled by ErrorBoundary
     //throw new Response("Not Found", {status: 404}); /// handled by CatchBoundary
@@ -79,12 +76,14 @@ export function ErrorBoundary({ error }) {
       <p>The stack trace is:</p>
       <pre>{error.stack}</pre>
     </div>
-  );
+  )
 }
+
 export function CatchBoundary() {
-  let caught = useCatch();
-  console.log('in CatchBoundary - caught', caught);
-  let message;
+  let caught = useCatch()
+  console.log('in CatchBoundary - caught', caught)
+  console.log('in CatchBoundary - caught.data.message', caught.data)
+  let message
   switch (caught.status) {
     case 401:
       message = (
@@ -92,14 +91,22 @@ export function CatchBoundary() {
           Oops! Looks like you tried to visit a page that you do not have access
           to.
         </p>
-      );
-      break;
+      )
+      break
     case 404:
       message = (
         <p>Oops! Looks like you tried to visit a page that does not exist.</p>
       );
-      break;
-
+      break
+    case 500:
+      message = (
+        <>
+          <p>Internal Server Error</p>
+          <p>{caught.data}</p>
+        </>
+      )
+      break
+  
     default:
       throw new Error(caught.data || caught.statusText);
   }
@@ -108,22 +115,22 @@ export function CatchBoundary() {
     <>
       <h1>Response Catch Boundary</h1>
       {message}
-      {caught.status}
+      Status: {caught.status}
     </>
-  );
+  )
 }
 
 export default function Index() {
-  const genRenderError = false;
+  const genRenderError = false
   const posts = useLoaderData().jsonPosts
   const supabasePosts = useLoaderData().supabasePosts
 
   const [pageErrors, setPageErrors] = React.useState([]);
   const triggerError = () =>
-    setPageErrors((prev) => [...prev, 'Page badness occurred']);
+    setPageErrors((prev) => [...prev, 'Page badness occurred'])
 
   if (genRenderError) {
-    ///throw new Error('Rendering badness')
+    throw new Error('Rendering badness')
   }
   const transition = useTransition()
 
@@ -142,12 +149,6 @@ export default function Index() {
         pageErrors.map((err, i) => <li key={i}>{err}</li>)}
       {pageErrors.length === 0 && (
         <ul>
-          {/* 
-              <li key={post.id}>
-                <Link to={"./" + post.id}>{post.id} - {post.title}</Link>
-              </li>
-              */}
-
           {posts.map((post) => (
             <li key={post.id}>
               <div>
